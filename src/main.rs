@@ -1,34 +1,45 @@
-use axum::{routing::get, Router};
-
-mod prompts;
+use axum::{
+    routing::{get, post},
+    Json, Router,
+};
 mod model;
+mod prompts;
+use serde::{Deserialize, Serialize};
 
-
-use crate::prompts::Prompt;
 use crate::model::Model;
+use crate::prompts::Prompt;
 
-async fn post_prompt() {
-    //takes prompt from terminal or emacs
-    //sends prompt to server
+#[derive(Debug, Deserialize, Serialize)]
+struct Response {
+    data: String,
 }
 
-async fn get_prompt_response() {
-    // sends back generated prompt from server
+async fn post_prompt() -> Json<Response> {
+    let prompt = Prompt::new("src/prompts/");
+    let model = Model::new("models/ggml-alpaca-13b-q4.bin");
+
+    let session = model.run_session(&prompt);
+
+    let res = Response { data: session };
+
+    Json(res)
+}
+
+// basic handler that responds with a static string
+async fn root() -> &'static str {
+    "Hello, World!"
 }
 
 #[tokio::main]
 async fn main() {
     // build our application with a single route
-    let app = Router::new().route("/", get(|| async { "Hello, World!" }));
+    let app = Router::new()
+        .route("/", get(root))
+        .route("/prompt", get(post_prompt));
 
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();
-
-    let prompt = Prompt::new("src/prompts/");
-    let model = Model::new("models/ggml-alpaca-13b-q4.bin");
-
-    model.run_session()
 }

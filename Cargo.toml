@@ -6,9 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+axum = "0.6.18"
 clap = { version = "4.2.7", features = ["derive"] }
-jsonrpc-v2 = "0.11.0"
+hyper = { version = "0.14.26", features = ["full"] }
 llm = "0.1.1"
 rand = "0.8.5"
+serde = "1.0.163"
 serde_json = "1.0.96"
 tokio = { version = "1.28.1", features = ["full"] }

@@ -1,21 +1,18 @@
 use llm;
-use llm::Model;
 use rand;
-use std::fs::{read_dir, File};
-use std::io::Read;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
+use crate::prompts::Prompt;
 
-struct Model {
-    data: llm::model::KnownModel,
+pub struct Model {
+    pub data: Box<dyn llm::Model>,
 }
 
 impl Model {
-    fn new(path: &str) -> Self {
+    pub fn new(pathing: &str) -> Self {
         let mut path = PathBuf::new();
         path.push(std::env::var("HOME").unwrap_or_else(|_| ".".to_owned()));
-        path.push(path);
+        path.push(pathing);
 
         //models/ggml-alpaca-13b-q4.bin
         // load a GGML model from disk
@@ -29,15 +26,18 @@ impl Model {
         )
         .unwrap_or_else(|err| panic!("Failed to load model: {err}"));
 
-        Self { data: llama }
+        Self {
+            data: Box::new(llama),
+        }
     }
 
-    fn run_session(&self, prompt: &Prompt) -> Result<InferenceStats, InferenceError> {
+    pub fn run_session(&self, prompt: &Prompt) -> String {
+        let mut res = String::new();
         // use the model to generate text from a prompt
         let mut session = self.data.start_session(Default::default());
-        let res = session.infer::<std::convert::Infallible>(
+        session.infer::<std::convert::Infallible>(
             // model to use for text generation
-            &llama,
+            self.data.as_ref(),
             // randomness provider
             &mut rand::thread_rng(),
             // the prompt to use for text generation, as well as other
@@ -52,15 +52,10 @@ impl Model {
             &mut Default::default(),
             // output callback
             |t| {
-                print!("{t}");
-                //std::io::stdout().flush().unwrap();
-
+                res.push_str(t);
                 Ok(())
             },
         );
-
-        match res {
-
-        }
+        res
     }
 }
