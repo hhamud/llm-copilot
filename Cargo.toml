@@ -10,4 +10,5 @@ clap = { version = "4.2.7", features = ["derive"] }
 jsonrpc-v2 = "0.11.0"
 llm = "0.1.1"
 rand = "0.8.5"
+serde_json = "1.0.96"
 tokio = { version = "1.28.1", features = ["full"] }
