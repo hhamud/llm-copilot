@@ -1,0 +1,7 @@
+I have a code that is not working. It gives me runtime error.
+\\begin{code}
+
+{fix}
+
+\\end{code}
+Please explain in details errors contained in this code and how to fix it?
