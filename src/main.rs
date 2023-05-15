@@ -25,17 +25,10 @@ async fn post_prompt() -> Json<Response> {
     Json(res)
 }
 
-// basic handler that responds with a static string
-async fn root() -> &'static str {
-    "Hello, World!"
-}
-
 #[tokio::main]
 async fn main() {
     // build our application with a single route
-    let app = Router::new()
-        .route("/", get(root))
-        .route("/prompt", get(post_prompt));
+    let app = Router::new().route("/", get(post_prompt));
 
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
