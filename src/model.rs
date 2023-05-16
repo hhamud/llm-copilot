@@ -31,7 +31,7 @@ impl Model {
         }
     }
 
-    pub fn run_session(&self, prompt: &Prompt) -> String {
+    pub fn run_session(&self, prompt: &str) -> String {
         let mut res = String::new();
         // use the model to generate text from a prompt
         let mut session = self.data.start_session(Default::default());
@@ -43,9 +43,7 @@ impl Model {
             // the prompt to use for text generation, as well as other
             // inference parameters
             &llm::InferenceRequest {
-                prompt: &prompt.generate(
-                    "Write the Python code with detailed comments to download webpage content",
-                ),
+                prompt,
                 ..Default::default()
             },
             // llm::OutputRequest

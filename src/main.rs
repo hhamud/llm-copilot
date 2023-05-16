@@ -14,11 +14,20 @@ struct Response {
     data: String,
 }
 
-async fn post_prompt() -> Json<Response> {
+#[derive(Debug, Deserialize, Serialize)]
+struct Request {
+    data: String,
+}
+
+async fn post_prompt(message: Json<Request>) -> Json<Response> {
     let prompt = Prompt::new("src/prompts/");
     let model = Model::new("models/ggml-alpaca-13b-q4.bin");
 
-    let session = model.run_session(&prompt);
+    let req = &message.data;
+
+    let gen = prompt.generate(&req);
+
+    let session = model.run_session(&gen);
 
     let res = Response { data: session };
 
@@ -28,7 +37,7 @@ async fn post_prompt() -> Json<Response> {
 #[tokio::main]
 async fn main() {
     // build our application with a single route
-    let app = Router::new().route("/", get(post_prompt));
+    let app = Router::new().route("/", post(post_prompt));
 
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
@@ -36,3 +45,5 @@ async fn main() {
         .await
         .unwrap();
 }
+
+//curl -X POST -H "Content-Type: application/json" -d '{ "data": "write a python function that prints hello world"}' http://localhost:3000/
