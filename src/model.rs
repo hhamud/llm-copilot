@@ -1,11 +1,21 @@
 use llm;
+use llm::{InferenceError, InferenceResponse};
 use rand;
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use crate::prompts::Prompt;
+use axum::{
+    extract::State,
+    response::sse::{Event, KeepAlive, Sse},
+    routing::{get, post},
+    Json, Router,
+};
 
+use futures_util::stream::{self, Stream};
+
+#[derive(Clone)]
 pub struct Model {
-    pub data: Box<dyn llm::Model>,
+    pub data: Arc<dyn llm::Model>,
 }
 
 impl Model {
@@ -14,7 +24,6 @@ impl Model {
         path.push(std::env::var("HOME").unwrap_or_else(|_| ".".to_owned()));
         path.push(pathing);
 
-        //models/ggml-alpaca-13b-q4.bin
         // load a GGML model from disk
         let llama = llm::load::<llm::models::Llama>(
             // path to GGML file
@@ -27,15 +36,24 @@ impl Model {
         .unwrap_or_else(|err| panic!("Failed to load model: {err}"));
 
         Self {
-            data: Box::new(llama),
+            data: Arc::new(llama),
         }
     }
 
-    pub fn run_session(&self, prompt: &str) -> String {
+    pub fn run_session(&self, prompt: &str) -> impl Stream<Item = Result<Event, Infallible>> {
         let mut res = String::new();
-        // use the model to generate text from a prompt
+        // start a new session
         let mut session = self.data.start_session(Default::default());
-        session.infer::<std::convert::Infallible>(
+
+        let (tx, rx) = futures::channel::mpsc::unbounded::<Token>();
+
+
+    // let stream = stream::collect(move || Event::default().data(&session))
+        // .map(Ok)
+        // .throttle(Duration::from_secs(1));
+
+        // use the model to generate text from a prompt
+        let res = session.infer::<std::convert::Infallible>(
             // model to use for text generation
             self.data.as_ref(),
             // randomness provider
@@ -49,11 +67,20 @@ impl Model {
             // llm::OutputRequest
             &mut Default::default(),
             // output callback
-            |t| {
-                res.push_str(t);
-                Ok(())
+            |t| match t {
+                InferenceResponse::InferredToken(r) => {
+                    let _ = tx.unbounded_send_all(stream::iter(r || Event::default().data(r)));
+
+                    Ok(InferenceFeedback::Continue)
+                } // Handle any errors returned from the inference process
             },
         );
-        res
+
+        if let Err(e) = result {
+            // Handle the error according to your needs
+            // For now, simply print the error message
+            println!("Inference error: {:?}", e);
+        }
+        rx
     }
 }
