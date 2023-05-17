@@ -1,8 +1,11 @@
 use llm;
-use llm::{InferenceError, InferenceResponse};
+use llm::{InferenceFeedback, InferenceResponse};
+
 use rand;
+use std::convert::Infallible;
 use std::path::PathBuf;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 
 use axum::{
     extract::State,
@@ -12,6 +15,7 @@ use axum::{
 };
 
 use futures_util::stream::{self, Stream};
+use tokio_stream::wrappers::ReceiverStream;
 
 #[derive(Clone)]
 pub struct Model {
@@ -30,6 +34,8 @@ impl Model {
             path.as_path(),
             // llm::ModelParameters
             Default::default(),
+            // overrides
+            None,
             // load progress callback
             llm::load_progress_callback_stdout,
         )
@@ -41,16 +47,11 @@ impl Model {
     }
 
     pub fn run_session(&self, prompt: &str) -> impl Stream<Item = Result<Event, Infallible>> {
-        let mut res = String::new();
         // start a new session
         let mut session = self.data.start_session(Default::default());
 
-        let (tx, rx) = futures::channel::mpsc::unbounded::<Token>();
-
-
-    // let stream = stream::collect(move || Event::default().data(&session))
-        // .map(Ok)
-        // .throttle(Duration::from_secs(1));
+        // create mpsc channels
+        let (tx, mut rx) = mpsc::channel::<Result<Event, Infallible>>(10);
 
         // use the model to generate text from a prompt
         let res = session.infer::<std::convert::Infallible>(
@@ -69,18 +70,19 @@ impl Model {
             // output callback
             |t| match t {
                 InferenceResponse::InferredToken(r) => {
-                    let _ = tx.unbounded_send_all(stream::iter(r || Event::default().data(r)));
+                    tx.try_send(Ok(Event::default().data(r)));
 
                     Ok(InferenceFeedback::Continue)
                 } // Handle any errors returned from the inference process
+                InferenceResponse::PromptToken(_) |
+                InferenceResponse::SnapshotToken(_) |
+                InferenceResponse::EotToken
+                => {
+                    Ok(InferenceFeedback::Continue)
+                }
             },
         );
 
-        if let Err(e) = result {
-            // Handle the error according to your needs
-            // For now, simply print the error message
-            println!("Inference error: {:?}", e);
-        }
-        rx
+        ReceiverStream::new(rx)
     }
 }

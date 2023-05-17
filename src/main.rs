@@ -38,11 +38,7 @@ async fn sse_prompt(
 
     let session = model.run_session(&gen);
 
-    let stream = stream::collect(move || Event::default().data(&session))
-        .map(Ok)
-        .throttle(Duration::from_secs(1));
-
-    Sse::new(stream).keep_alive(KeepAlive::default())
+    Sse::new(session).keep_alive(KeepAlive::default())
 }
 
 #[tokio::main]
