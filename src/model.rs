@@ -1,20 +1,12 @@
+use axum::response::sse::Event;
+use futures_util::stream::Stream;
 use llm;
 use llm::{InferenceFeedback, InferenceResponse};
-
 use rand;
 use std::convert::Infallible;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-
-use axum::{
-    extract::State,
-    response::sse::{Event, KeepAlive, Sse},
-    routing::{get, post},
-    Json, Router,
-};
-
-use futures_util::stream::{self, Stream};
 use tokio_stream::wrappers::ReceiverStream;
 
 #[derive(Clone)]
@@ -51,37 +43,36 @@ impl Model {
         let mut session = self.data.start_session(Default::default());
 
         // create mpsc channels
-        let (tx, mut rx) = mpsc::channel::<Result<Event, Infallible>>(10);
+        let (tx, rx) = mpsc::channel::<Result<Event, Infallible>>(100);
 
         // use the model to generate text from a prompt
-        let res = session.infer::<std::convert::Infallible>(
-            // model to use for text generation
-            self.data.as_ref(),
-            // randomness provider
-            &mut rand::thread_rng(),
-            // the prompt to use for text generation, as well as other
-            // inference parameters
-            &llm::InferenceRequest {
-                prompt,
-                ..Default::default()
-            },
-            // llm::OutputRequest
-            &mut Default::default(),
-            // output callback
-            |t| match t {
-                InferenceResponse::InferredToken(r) => {
-                    tx.try_send(Ok(Event::default().data(r)));
+        session
+            .infer::<std::convert::Infallible>(
+                // model to use for text generation
+                self.data.as_ref(),
+                // randomness provider
+                &mut rand::thread_rng(),
+                // the prompt to use for text generation, as well as other
+                // inference parameters
+                &llm::InferenceRequest {
+                    prompt,
+                    ..Default::default()
+                },
+                // llm::OutputRequest
+                &mut Default::default(),
+                // output callback
+                |t| match t {
+                    InferenceResponse::InferredToken(r) => {
+                        tx.try_send(Ok(Event::default().data(r))).unwrap();
 
-                    Ok(InferenceFeedback::Continue)
-                } // Handle any errors returned from the inference process
-                InferenceResponse::PromptToken(_) |
-                InferenceResponse::SnapshotToken(_) |
-                InferenceResponse::EotToken
-                => {
-                    Ok(InferenceFeedback::Continue)
-                }
-            },
-        );
+                        Ok(InferenceFeedback::Continue)
+                    }
+                    InferenceResponse::PromptToken(_)
+                    | InferenceResponse::SnapshotToken(_)
+                    | InferenceResponse::EotToken => Ok(InferenceFeedback::Continue),
+                },
+            )
+            .unwrap();
 
         ReceiverStream::new(rx)
     }

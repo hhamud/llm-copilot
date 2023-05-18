@@ -1,0 +1,8 @@
+Can you generate my code within an emacs org mode shell like so:
+#+begin_src shell
+ls
+#+end_src
+
+but replace "shell" with the name of language used
+and place the code in between the hashes.
+Here is the commands: {emacs}

@@ -35,9 +35,6 @@ impl Prompt {
                 }
             }
         }
-        for (key, value) in &data {
-            println!("Key: {}, Value: {}", key, value);
-        }
 
         Self { data }
     }
@@ -50,5 +47,10 @@ impl Prompt {
     pub fn generate(&self, generate: &str) -> String {
         let contents = self.data.get("generation").expect("not available");
         contents.replace("{generate}", generate)
+    }
+
+    pub fn emacs(&self, generate: &str) -> String {
+        let contents = self.data.get("emacs").expect("not available");
+        contents.replace("{emacs}", generate)
     }
 }
