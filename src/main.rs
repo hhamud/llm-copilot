@@ -26,7 +26,7 @@ async fn sse_prompt(
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let prompt = Prompt::new("src/prompts/");
 
-    let gen = prompt.emacs(&message.data);
+    let gen = prompt.generate(&message.data);
 
     let session = model.run_session(&gen);
 

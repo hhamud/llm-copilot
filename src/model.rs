@@ -46,7 +46,7 @@ impl Model {
         let (tx, rx) = mpsc::channel::<Result<Event, Infallible>>(100);
 
         // use the model to generate text from a prompt
-        session
+        let res = session
             .infer::<std::convert::Infallible>(
                 // model to use for text generation
                 self.data.as_ref(),
@@ -63,7 +63,7 @@ impl Model {
                 // output callback
                 |t| match t {
                     InferenceResponse::InferredToken(r) => {
-                        tx.try_send(Ok(Event::default().data(r))).unwrap();
+                        tx.try_send(Ok(Event::default().data(r)));
 
                         Ok(InferenceFeedback::Continue)
                     }
@@ -71,8 +71,12 @@ impl Model {
                     | InferenceResponse::SnapshotToken(_)
                     | InferenceResponse::EotToken => Ok(InferenceFeedback::Continue),
                 },
-            )
-            .unwrap();
+            );
+
+        match res {
+            Ok(result) => println!("{:?}", result),
+            Err(result) => println!("{:?}", result),
+        }
 
         ReceiverStream::new(rx)
     }

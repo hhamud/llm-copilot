@@ -18,32 +18,52 @@
 ;;  Description
 ;;
 ;;; Code:
-;; llm-copilot.el
+(require 'json)
 
 
-;; Define filter function
-(defun llm-copilot-filter-function (process output)
-  (with-current-buffer (process-buffer process)
-    (save-excursion
-      (goto-char (point-max))
-      (insert output))))
+(defvar llm-copilot-sse-buffer-name "*Server Side Events*"
+  "Name of the buffer to store SSE events.")
 
-;; Define sentinel function
-(defun llm-copilot-sentinel-function (process event)
-  (message "Server connection status: %s" event))
 
-;; Connect to the server
-(setq server-buffer (make-network-process :name "llm-copilot"
-                                          :host "0.0.0.0"
-                                          :service "3000"))
 
-;; Set up data handling
-(set-process-filter server-buffer 'llm-copilot-filter-function)
-(set-process-sentinel server-buffer 'llm-copilot-sentinel-function)
+(defun llm-copilot-process-sse-event (event-data)
+  "Process a single SSE EVENT-DATA and append it to a new buffer."
+  (let ((buffer (generate-new-buffer llm-copilot-sse-buffer-name)))
+    (with-current-buffer buffer
+      (org-mode)
+      (insert (format "%s\n" event-data)))
+    (switch-to-buffer buffer)))
 
-;; Start the process
-(start-process-shell-command server-buffer "llm-copilot-buffer" "your-shell-command")
 
+(defun llm-copilot-retrieve-sse-events ()
+  "Prompt for user input and retrieve SSE events from the server."
+  (interactive)
+  (let* ((data (read-string "Enter the data: "))
+         (url "http://localhost:3000")
+         (json-data (json-encode `(("data" . ,data))))
+         (curl-args `("-X" "POST"
+                      "-H" "Content-Type: application/json"
+                      "-d" ,json-data
+                      ,url))
+         (process (apply #'start-process "curl" nil "curl" curl-args)))
+    (set-process-filter process #'llm-copilot-process-output)
+    (set-process-sentinel process #'llm-copilot-process-sentinel)))
+
+(defun llm-copilot-process-output (process output)
+  "Process the OUTPUT from the PROCESS and handle SSE events."
+  (message output)
+  (when (string-match "^data:\\s-*\\(.*\\)" output)
+    (let ((event-data (match-string 1 output)))
+      (llm-copilot-process-sse-event event-data))))
+
+
+
+
+
+(defun llm-copilot-process-sentinel (process event)
+  "Process the EVENT from the PROCESS sentinel."
+  (when (string= event "finished\n")
+    (message "cURL process finished successfully")))
 
 
 
