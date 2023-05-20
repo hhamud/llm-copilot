@@ -8,12 +8,9 @@ use crate::prompts::Prompt;
 
 use axum::{
     extract::State,
-    response::sse::{Event, KeepAlive, Sse},
     routing::post,
     Json, Router,
 };
-use futures_util::stream::Stream;
-use std::convert::Infallible;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Request {

@@ -9,11 +9,8 @@ edition = "2021"
 axum = "0.6.18"
 llm = { git = "https://github.com/rustformers/llm.git", rev = "1849aacb814d43a86e03a20502e47f0ff83eda68" }
 clap = { version = "4.2.7", features = ["derive"] }
-futures-util = "0.3.28"
 hyper = { version = "0.14.26", features = ["full"] }
 rand = "0.8.5"
 serde = "1.0.163"
 serde_json = "1.0.96"
 tokio = { version = "1.28.1", features = ["full"] }
-tokio-stream = "0.1.14"
-async-stream = "0.3.5"
