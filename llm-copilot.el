@@ -18,53 +18,60 @@
 ;;  Description
 ;;
 ;;; Code:
+(require 'url)
 (require 'json)
+(require 'org)
 
+(defun llm-copilot--my-send-post-request (url payload callback)
+  "Send a POST request to the specified URL with the given payload.
+   Calls the CALLBACK function with the response data."
+  (let* ((url-request-method "POST")
+         (url-request-extra-headers
+          '(("Content-Type" . "application/json")))
+         (url-request-data payload))
+    (url-retrieve url (lambda (status)
+                        (let ((response-buffer (current-buffer)))
+                          (with-current-buffer response-buffer
+                            (goto-char (point-min))
+                            (search-forward-regexp "\n\n")
+                            (let ((json-string (buffer-substring-no-properties (point) (point-max))))
+                              (kill-buffer response-buffer)
+                              (condition-case nil
+                                  (let ((json-object-type 'plist))
+                                    (funcall callback (plist-get (json-read-from-string json-string) :data)))
+                                (error (funcall callback nil))))))))))
 
-(defvar llm-copilot-sse-buffer-name "*Server Side Events*"
-  "Name of the buffer to store SSE events.")
-
-
-
-(defun llm-copilot-process-sse-event (event-data)
-  "Process a single SSE EVENT-DATA and append it to a new buffer."
-  (let ((buffer (generate-new-buffer llm-copilot-sse-buffer-name)))
-    (with-current-buffer buffer
+(defun llm-copilot--my-insert-hello-world (text)
+  "Insert 'Hello, World!' into an Org Mode buffer with the given TEXT."
+  (let* ((url "http://localhost:3000")
+         (payload (json-encode `((data . ,text))))
+         (buffer-name "*llm-copilot*"))
+    (with-current-buffer (get-buffer-create buffer-name)
+      (goto-char (point-max))
+      (unless (bolp)
+        (insert "\n"))
       (org-mode)
-      (insert (format "%s\n" event-data)))
-    (switch-to-buffer buffer)))
+      (insert "* Hello, World!\n")
+      (insert "  - Input: " text "\n")
+      (insert "  - Waiting for response...\n\n")
+      (switch-to-buffer buffer-name)
+      (llm-copilot--my-send-post-request url payload
+                                         (lambda (response)
+                                           (if response
+                                               (progn
+                                                 (with-current-buffer buffer-name
+                                                   (goto-char (point-max))
+                                                   (insert "  - Response:\n")
+                                                   (insert "    #+BEGIN_SRC\n" response "\n    #+END_SRC\n\n")))
+                                             (with-current-buffer buffer-name
+                                               (goto-char (point-max))
+                                               (insert "  - Failed to fetch response\n\n"))))))))
 
-
-(defun llm-copilot-retrieve-sse-events ()
-  "Prompt for user input and retrieve SSE events from the server."
+(defun llm-copilot--my-interact-insert-hello-world ()
+  "Interactively ask for input and insert 'Hello, World!' in an Org Mode buffer."
   (interactive)
-  (let* ((data (read-string "Enter the data: "))
-         (url "http://localhost:3000")
-         (json-data (json-encode `(("data" . ,data))))
-         (curl-args `("-X" "POST"
-                      "-H" "Content-Type: application/json"
-                      "-d" ,json-data
-                      ,url))
-         (process (apply #'start-process "curl" nil "curl" curl-args)))
-    (set-process-filter process #'llm-copilot-process-output)
-    (set-process-sentinel process #'llm-copilot-process-sentinel)))
-
-(defun llm-copilot-process-output (process output)
-  "Process the OUTPUT from the PROCESS and handle SSE events."
-  (message output)
-  (when (string-match "^data:\\s-*\\(.*\\)" output)
-    (let ((event-data (match-string 1 output)))
-      (llm-copilot-process-sse-event event-data))))
-
-
-
-
-
-(defun llm-copilot-process-sentinel (process event)
-  "Process the EVENT from the PROCESS sentinel."
-  (when (string= event "finished\n")
-    (message "cURL process finished successfully")))
-
+  (let* ((text (read-string "Enter text: ")))
+    (llm-copilot--my-insert-hello-world text)))
 
 
 (provide 'llm-copilot)

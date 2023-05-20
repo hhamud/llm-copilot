@@ -38,7 +38,8 @@ impl Model {
         }
     }
 
-    pub fn run_session(&self, prompt: &str) -> impl Stream<Item = Result<Event, Infallible>> {
+    pub fn run_session(&self, prompt: &str) -> String {
+        let mut data = String::new();
         // start a new session
         let mut session = self.data.start_session(Default::default());
 
@@ -46,38 +47,37 @@ impl Model {
         let (tx, rx) = mpsc::channel::<Result<Event, Infallible>>(100);
 
         // use the model to generate text from a prompt
-        let res = session
-            .infer::<std::convert::Infallible>(
-                // model to use for text generation
-                self.data.as_ref(),
-                // randomness provider
-                &mut rand::thread_rng(),
-                // the prompt to use for text generation, as well as other
-                // inference parameters
-                &llm::InferenceRequest {
-                    prompt,
-                    ..Default::default()
-                },
-                // llm::OutputRequest
-                &mut Default::default(),
-                // output callback
-                |t| match t {
-                    InferenceResponse::InferredToken(r) => {
-                        tx.try_send(Ok(Event::default().data(r)));
+        let res = session.infer::<std::convert::Infallible>(
+            // model to use for text generation
+            self.data.as_ref(),
+            // randomness provider
+            &mut rand::thread_rng(),
+            // the prompt to use for text generation, as well as other
+            // inference parameters
+            &llm::InferenceRequest {
+                prompt,
+                ..Default::default()
+            },
+            // llm::OutputRequest
+            &mut Default::default(),
+            // output callback
+            |t| match t {
+                InferenceResponse::InferredToken(r) => {
+                    data.push_str(&r);
 
-                        Ok(InferenceFeedback::Continue)
-                    }
-                    InferenceResponse::PromptToken(_)
-                    | InferenceResponse::SnapshotToken(_)
-                    | InferenceResponse::EotToken => Ok(InferenceFeedback::Continue),
-                },
-            );
+                    Ok(InferenceFeedback::Continue)
+                }
+                InferenceResponse::PromptToken(_)
+                | InferenceResponse::SnapshotToken(_)
+                | InferenceResponse::EotToken => Ok(InferenceFeedback::Continue),
+            },
+        );
 
         match res {
             Ok(result) => println!("{:?}", result),
             Err(result) => println!("{:?}", result),
         }
 
-        ReceiverStream::new(rx)
+        data
     }
 }

@@ -20,17 +20,21 @@ struct Request {
     data: String,
 }
 
-async fn sse_prompt(
-    State(model): State<Model>,
-    message: Json<Request>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+#[derive(Debug, Deserialize, Serialize)]
+struct Tokens {
+    data: String,
+}
+
+async fn sse_prompt(State(model): State<Model>, message: Json<Request>) -> Json<Tokens> {
     let prompt = Prompt::new("src/prompts/");
 
     let gen = prompt.generate(&message.data);
 
     let session = model.run_session(&gen);
 
-    Sse::new(session).keep_alive(KeepAlive::default())
+    let response = Tokens { data: session };
+
+    Json(response)
 }
 
 #[tokio::main]
