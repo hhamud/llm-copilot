@@ -1,4 +1,7 @@
-use llm::{InferenceFeedback, InferenceResponse, InferenceRequest, models::Llama, load, load_progress_callback_stdout};
+use llm::{
+    load, load_progress_callback_stdout, models::Llama, InferenceFeedback, InferenceRequest,
+    InferenceResponse,
+};
 use rand;
 use std::path::PathBuf;
 use std::sync::Arc;

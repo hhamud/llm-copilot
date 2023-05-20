@@ -6,11 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::model::Model;
 use crate::prompts::Prompt;
 
-use axum::{
-    extract::State,
-    routing::post,
-    Json, Router,
-};
+use axum::{extract::State, routing::post, Json, Router};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Request {

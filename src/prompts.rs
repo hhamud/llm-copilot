@@ -8,13 +8,10 @@ pub struct Prompt {
 
 impl Prompt {
     pub fn new(path: &str) -> Self {
-        // load the entire directory
-
         let dir_path = Path::new(path);
 
         let mut data = HashMap::new();
 
-        // Read directory contents
         let dir_entries = read_dir(dir_path).expect("failed to read dir");
 
         for entry in dir_entries {
@@ -22,12 +19,9 @@ impl Prompt {
             let file_path = entry.path();
 
             if file_path.is_file() {
-                // Extract the file name without extension
                 if let Some(file_stem) = file_path.file_stem() {
-                    // Convert the file stem to a string
                     let file_name: String = file_stem.to_string_lossy().to_string();
 
-                    // Read the file contents into a string
                     let file_contents: String =
                         read_to_string(&file_path).expect("failed to read contents");
 
