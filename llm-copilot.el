@@ -7,9 +7,9 @@
 ;; Created: May 18, 2023
 ;; Modified: May 18, 2023
 ;; Version: 0.0.1
-;; Keywords: llm-copilot
+;; Keywords: llm copilot ai rust rustformers transformers
 ;; Homepage: https://github.com/hhamud/llm-copilot
-;; Package-Requires: ((emacs "24.3"))
+;; Package-Requires: ((emacs "24.3") (spinner "1.7.4"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -21,8 +21,29 @@
 (require 'url)
 (require 'json)
 (require 'org)
+(require 'spinner)
 
-(defun llm-copilot--my-send-post-request (url payload callback)
+(defvar llm-copilot--spinner nil
+  "Variable to store the spinner object.")
+
+(defvar llm-copilot--languages
+  '("awk" "C" "C++" "clojure" "css" "csv" "emacs-lisp" "fortran" "gnuplot"
+    "go" "haskell" "java" "javascript" "julia" "latex" "ledger" "lisp"
+    "lua" "matlab" "ocaml" "octave" "org" "perl" "python" "R" "ruby" "rust"
+    "scala" "scheme" "shell" "sql" "typescript" "markdown")
+  "List of languages that can be highlighted in an org code block.")
+
+(defun llm-copilot--start-spinner ()
+  "Start the spinner animation."
+  (setq llm-copilot--spinner (spinner-start 'minibox)))
+
+(defun llm-copilot--stop-spinner ()
+  "Stop the spinner animation."
+  (when llm-copilot--spinner
+    (spinner-stop llm-copilot--spinner)
+    (setq llm-copilot--spinner nil)))
+
+(defun llm-copilot--send-post-request (url payload callback)
   "Send a POST request to the specified URL with the given payload.
    Calls the CALLBACK function with the response data."
   (let* ((url-request-method "POST")
@@ -41,8 +62,9 @@
                                     (funcall callback (plist-get (json-read-from-string json-string) :data)))
                                 (error (funcall callback nil))))))))))
 
-(defun llm-copilot--my-insert-hello-world (text)
-  "Insert 'Hello, World!' into an Org Mode buffer with the given TEXT."
+(defun llm-copilot--insert-into-org-mode (text lang)
+  "Insert response into an Org Mode buffer with the given
+        TEXT and LANG as the syntax highlighter."
   (let* ((url "http://localhost:3000")
          (payload (json-encode `((data . ,text))))
          (buffer-name "*llm-copilot*"))
@@ -51,27 +73,32 @@
       (unless (bolp)
         (insert "\n"))
       (org-mode)
-      (insert "* Hello, World!\n")
-      (insert "  - Input: " text "\n")
-      (insert "  - Waiting for response...\n\n")
+      (insert "* Copilot\n")
+      (insert "  - Prompt: " text "\n")
+      (llm-copilot--start-spinner) ;
       (switch-to-buffer buffer-name)
-      (llm-copilot--my-send-post-request url payload
+      (llm-copilot--send-post-request url payload
                                          (lambda (response)
+                                           (llm-copilot--stop-spinner)
                                            (if response
                                                (progn
                                                  (with-current-buffer buffer-name
                                                    (goto-char (point-max))
-                                                   (insert "  - Response:\n")
-                                                   (insert "    #+BEGIN_SRC\n" response "\n    #+END_SRC\n\n")))
+                                                   (insert "    #+BEGIN_SRC\s" lang "\n" response "\n    #+END_SRC\n\n")))
                                              (with-current-buffer buffer-name
                                                (goto-char (point-max))
                                                (insert "  - Failed to fetch response\n\n"))))))))
 
-(defun llm-copilot--my-interact-insert-hello-world ()
-  "Interactively ask for input and insert 'Hello, World!' in an Org Mode buffer."
-  (interactive)
-  (let* ((text (read-string "Enter text: ")))
-    (llm-copilot--my-insert-hello-world text)))
+
+(defun llm-copilot--generate (text)
+  "Interactively ask for input and insert code in an Org Mode buffer."
+  (interactive "sEnter Prompt: ")
+  (let* ((selected-lang (ivy-read "Select Language: " llm-copilot--languages)))
+    (llm-copilot--insert-into-org-mode text selected-lang)))
+
+
+
+
 
 
 (provide 'llm-copilot)
