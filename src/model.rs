@@ -1,6 +1,5 @@
 use llm::{
-    load, load_progress_callback_stdout, models::Llama, InferenceFeedback, InferenceRequest,
-    InferenceResponse,
+    load, load_progress_callback_stdout, InferenceFeedback, InferenceRequest, InferenceResponse,
 };
 use rand;
 use std::path::PathBuf;
@@ -12,13 +11,16 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new(pathing: &str) -> Self {
-        let mut path = PathBuf::new();
-        path.push(std::env::var("HOME").unwrap_or_else(|_| ".".to_owned()));
-        path.push(pathing);
+    pub fn new<T>(path: &PathBuf) -> Self
+    where
+        T: llm::KnownModel + 'static,
+    {
+        //let mut path = PathBuf::new();
+        //path.push(std::env::var("HOME").unwrap_or_else(|_| ".".to_owned()));
+        //path.push(pathing);
 
         // load a GGML model from disk
-        let llama = load::<Llama>(
+        let llama = load::<T>(
             // path to GGML file
             path.as_path(),
             // llm::ModelParameters
