@@ -5,6 +5,11 @@ use rand;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+pub fn load_model<M: llm::KnownModel + 'static>(path: &PathBuf) -> Model {
+    let model = Model::new::<M>(path);
+    model
+}
+
 #[derive(Clone)]
 pub struct Model {
     pub data: Arc<dyn llm::Model>,
@@ -15,10 +20,6 @@ impl Model {
     where
         T: llm::KnownModel + 'static,
     {
-        //let mut path = PathBuf::new();
-        //path.push(std::env::var("HOME").unwrap_or_else(|_| ".".to_owned()));
-        //path.push(pathing);
-
         // load a GGML model from disk
         let llama = load::<T>(
             // path to GGML file
