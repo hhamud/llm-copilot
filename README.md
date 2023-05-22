@@ -16,7 +16,7 @@ cargo install --git https://www.github.com/hhamud/llm-copilot
 ## Running
 To run the server while in the folder
 ``` shell
-cargo run --release
+cargo run --release -- llama -m <model-path>
 ```
 
 ### Emacs:
@@ -25,5 +25,5 @@ call function `llm-copilot--generate` to send a prompt to the llm and it generat
 ### Other IDEs
 Send post requests to the server as so if not using emacs
 ``` shell
-curl -X POST -H "Content-Type: application/json" -d '{ "data": "write a python function that prints hello world"}' http://localhost:3000
+curl -X POST -H "Content-Type: application/json" -d '{ "prompt_type": "GENERATE", "data": "write a python function that prints hello world"}' http://localhost:3000
 ```

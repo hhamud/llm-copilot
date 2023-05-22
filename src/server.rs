@@ -1,4 +1,5 @@
 use axum::{extract::State, routing::post, Json, Router};
+use llm;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -7,24 +8,29 @@ use tokio;
 use crate::model::Model;
 use crate::prompts::Prompt;
 
-#[derive(Debug, Serialize)]
+pub async fn load_server<M: llm::KnownModel + 'static>(path: &PathBuf, addr: &String) {
+    let model = Model::new::<M>(path);
+    let server = Server::new(addr, model);
+    server.start().await;
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 enum PromptType {
     FIX,
     GENERATE,
     EMACS,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Request {
     prompt_type: PromptType,
     data: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Tokens {
     data: String,
 }
-
 
 #[axum::debug_handler]
 async fn sse_prompt(State(model): State<Model>, message: Json<Request>) -> Json<Tokens> {
@@ -75,13 +81,15 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(_addr: &str, model: Model) -> Self {
+    pub fn new(_addr: &String, model: Model) -> Self {
         let n = _addr.parse::<SocketAddr>().unwrap();
         Self { addr: n, model }
     }
 
     pub async fn start(&self) {
-        let app = Router::new().route("/", post(sse_prompt)).with_state(self.model.clone());
+        let app = Router::new()
+            .route("/", post(sse_prompt))
+            .with_state(self.model.clone());
 
         let server = axum::Server::bind(&self.addr)
             .serve(app.into_make_service())
