@@ -9,7 +9,7 @@
 ;; Version: 0.0.1
 ;; Keywords: llm copilot ai rust rustformers transformers
 ;; Homepage: https://github.com/hhamud/llm-copilot
-;; Package-Requires: ((emacs "24.3") (spinner "1.7.4"))
+;; Package-Requires: ((emacs "24.3") (spinner "1.7.4") )
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -32,6 +32,10 @@
     "lua" "matlab" "ocaml" "octave" "org" "perl" "python" "R" "ruby" "rust"
     "scala" "scheme" "shell" "sql" "typescript" "markdown")
   "List of languages that can be highlighted in an org code block.")
+
+(defvar llm-copilot--prompt-type
+  '("GENERATE" "FIX" "EMACS")
+  "Prompt type field for the post request.")
 
 (defun llm-copilot--start-spinner ()
   "Start the spinner animation."
@@ -62,12 +66,16 @@
                                     (funcall callback (plist-get (json-read-from-string json-string) :data)))
                                 (error (funcall callback nil))))))))))
 
-(defun llm-copilot--insert-into-org-mode (text lang)
+
+(defun llm-copilot--insert-into-org-mode (text lang prompt)
   "Insert response into an Org Mode buffer with the given
-        TEXT and LANG as the syntax highlighter."
+        TEXT and LANG as the syntax highlighter and PROMPT as prompt-type."
   (let* ((url "http://localhost:3000")
-         (payload (json-encode `((data . ,text))))
+         (cb (list (cons 'data text)
+                   (cons 'prompt-type prompt)))
+         (payload (json-encode cb))
          (buffer-name "*llm-copilot*"))
+
     (with-current-buffer (get-buffer-create buffer-name)
       (goto-char (point-max))
       (unless (bolp)
@@ -78,25 +86,34 @@
       (llm-copilot--start-spinner) ;
       (switch-to-buffer buffer-name)
       (llm-copilot--send-post-request url payload
-                                         (lambda (response)
-                                           (llm-copilot--stop-spinner)
-                                           (if response
-                                               (progn
-                                                 (with-current-buffer buffer-name
-                                                   (goto-char (point-max))
-                                                   (insert "    #+BEGIN_SRC\s" lang "\n" response "\n    #+END_SRC\n\n")))
-                                             (with-current-buffer buffer-name
-                                               (goto-char (point-max))
-                                               (insert "  - Failed to fetch response\n\n"))))))))
+                                      (lambda (response)
+                                        (llm-copilot--stop-spinner)
+                                        (if response
+                                            (progn
+                                              (with-current-buffer buffer-name
+                                                (goto-char (point-max))
+                                                (insert "    #+BEGIN_SRC\s" lang "\n" response "\n    #+END_SRC\n\n")))
+                                          (with-current-buffer buffer-name
+                                            (goto-char (point-max))
+                                            (insert "  - Failed to fetch response\n\n"))))))))
 
 
 (defun llm-copilot--generate (text)
   "Interactively ask for input and insert code in an Org Mode buffer."
   (interactive "sEnter Prompt: ")
-  (let* ((selected-lang (ivy-read "Select Language: " llm-copilot--languages)))
-    (llm-copilot--insert-into-org-mode text selected-lang)))
+  (let* ((selected-lang (ivy-read "Select Language: " llm-copilot--languages))
+         (selected-prompt-type (ivy-read "Select Prompt Type: " llm-copilot--prompt-type)))
+    (llm-copilot--insert-into-org-mode text selected-lang selected-prompt-type)))
 
 
+
+(defun llm-copilot-start-server (model &optional address)
+  "Start the server supplying the MODEL path and server ADDRESS."
+  (interactive "fSelect model: \nsSelect address (press Enter to use default localhost:3000): ")
+  (let ((address-arg (if address (format "--address %s" (shell-quote-argument address)) "")))
+    (shell-command (format "cargo run --release -- --model %s %s"
+                           (shell-quote-argument model)
+                           address-arg))))
 
 
 
