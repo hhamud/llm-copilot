@@ -23,6 +23,10 @@
 (require 'org)
 (require 'spinner)
 
+
+(defvar llm-copilot--server-address "http://localhost:3000"
+  "Default address.")
+
 (defvar llm-copilot--spinner nil
   "Variable to store the spinner object.")
 
@@ -70,12 +74,11 @@
 (defun llm-copilot--insert-into-org-mode (text lang prompt)
   "Insert response into an Org Mode buffer with the given
         TEXT and LANG as the syntax highlighter and PROMPT as prompt-type."
-  (let* ((url "http://localhost:3000")
+  (let* ((url llm-copilot--server-address)
          (cb (list (cons 'data text)
                    (cons 'prompt-type prompt)))
          (payload (json-encode cb))
          (buffer-name "*llm-copilot*"))
-
     (with-current-buffer (get-buffer-create buffer-name)
       (goto-char (point-max))
       (unless (bolp)
@@ -97,7 +100,6 @@
                                             (goto-char (point-max))
                                             (insert "  - Failed to fetch response\n\n"))))))))
 
-
 (defun llm-copilot--generate (text)
   "Interactively ask for input and insert code in an Org Mode buffer."
   (interactive "sEnter Prompt: ")
@@ -110,8 +112,12 @@
 (defun llm-copilot-start-server (model &optional address)
   "Start the server supplying the MODEL path and server ADDRESS."
   (interactive "fSelect model: \nsSelect address (press Enter to use default localhost:3000): ")
-  (let ((address-arg (if address (format "--address %s" (shell-quote-argument address)) "")))
-    (shell-command (format "cargo run --release -- --model %s %s"
+  (let ((address-arg (if (not (string-empty-p address))
+                         (progn
+                         (setq llm-copilot--server-address (format "http://%s" address))
+                         (format "--address %s" (shell-quote-argument address)))
+                       "")))
+    (shell-command (format "llm-copilot llama --model %s %s"
                            (shell-quote-argument model)
                            address-arg))))
 

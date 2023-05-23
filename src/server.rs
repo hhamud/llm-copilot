@@ -1,7 +1,7 @@
 use axum::{extract::State, routing::post, Json, Router};
 use llm;
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 use tokio;
 
@@ -82,8 +82,10 @@ pub struct Server {
 
 impl Server {
     pub fn new(_addr: &String, model: Model) -> Self {
-        let n = _addr.parse::<SocketAddr>().unwrap();
-        Self { addr: n, model }
+        match string_to_socketaddr(_addr) {
+            Ok(res) => Self { addr: res, model },
+            Err(err) => panic!("Error: {}", err),
+        }
     }
 
     pub async fn start(&self) {
@@ -100,5 +102,18 @@ impl Server {
         if let Err(err) = server.await {
             eprintln!("Server error: {}", err);
         }
+    }
+}
+
+fn string_to_socketaddr(address_string: &str) -> Result<SocketAddr, Box<dyn std::error::Error>> {
+    // Use the to_socket_addrs() method to parse the address string
+    let socket_addrs = address_string.to_socket_addrs()?;
+
+    // Extract the first socket address from the iterator
+    if let Some(socket_addr) = socket_addrs.into_iter().next() {
+        Ok(socket_addr)
+    } else {
+        // Handle the case when no socket addresses are found
+        Err("Unable to resolve socket address".into())
     }
 }

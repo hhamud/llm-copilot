@@ -17,9 +17,9 @@ Make sure that you have already downloaded a ggml based model that has the follo
 - GptJ
 
 
-To run the server while in the folder
+To run the server after installation
 ``` shell
-cargo run --release -- <llama/bloom/gpt2/gptj> -m <model-path> --address <local server address>
+llm-copilot <llama/bloom/gpt2/gptj> -m <model-path> --address <local server address>
 ```
 
 
