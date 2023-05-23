@@ -27,9 +27,6 @@
 (defvar llm-copilot--server-address "http://localhost:3000"
   "Default address.")
 
-(defvar llm-copilot--spinner nil
-  "Variable to store the spinner object.")
-
 (defvar llm-copilot--languages
   '("awk" "C" "C++" "clojure" "css" "csv" "emacs-lisp" "fortran" "gnuplot"
     "go" "haskell" "java" "javascript" "julia" "latex" "ledger" "lisp"
@@ -41,15 +38,6 @@
   '("GENERATE" "FIX" "EMACS")
   "Prompt type field for the post request.")
 
-(defun llm-copilot--start-spinner ()
-  "Start the spinner animation."
-  (setq llm-copilot--spinner (spinner-start 'minibox)))
-
-(defun llm-copilot--stop-spinner ()
-  "Stop the spinner animation."
-  (when llm-copilot--spinner
-    (spinner-stop llm-copilot--spinner)
-    (setq llm-copilot--spinner nil)))
 
 (defun llm-copilot--send-post-request (url payload callback)
   "Send a POST request to the specified URL with the given payload.
@@ -59,25 +47,41 @@
           '(("Content-Type" . "application/json")))
          (url-request-data payload))
     (url-retrieve url (lambda (status)
-                        (let ((response-buffer (current-buffer)))
-                          (with-current-buffer response-buffer
-                            (goto-char (point-min))
-                            (search-forward-regexp "\n\n")
-                            (let ((json-string (buffer-substring-no-properties (point) (point-max))))
-                              (kill-buffer response-buffer)
-                              (condition-case nil
-                                  (let ((json-object-type 'plist))
-                                    (funcall callback (plist-get (json-read-from-string json-string) :data)))
-                                (error (funcall callback nil))))))))))
+                        (if status
+                            (funcall callback nil)
+                          (let ((response-buffer (current-buffer)))
+                            (with-current-buffer response-buffer
+                              (goto-char (point-min))
+                              (if (search-forward-regexp "\n\n" nil t)
+                                  (let ((json-string (buffer-substring-no-properties (point) (point-max))))
+                                    (kill-buffer response-buffer)
+                                    (condition-case nil
+                                        (let ((json-object-type 'plist))
+                                          (funcall callback (plist-get (json-read-from-string json-string) :data)))
+                                      (error (funcall callback nil))))
+                                (kill-buffer response-buffer)
+                                (funcall callback nil)))))))))
 
+(defvar llm-copilot--spinner (make-hash-table :test 'equal)
+  "A hashtable for storing spinner objects associated with buffer names.")
+
+(defun llm-copilot--start-spinner (buffer-name)
+  "Start the spinner animation."
+  (puthash buffer-name (spinner-start 'minibox) llm-copilot--spinner))
+
+(defun llm-copilot--stop-spinner (buffer-name)
+  "Stop the spinner animation."
+  (let ((spinner (gethash buffer-name llm-copilot--spinner)))
+    (when spinner
+      (spinner-stop spinner)
+      (remhash buffer-name llm-copilot--spinner))))
 
 (defun llm-copilot--insert-into-org-mode (text lang prompt)
   "Insert response into an Org Mode buffer with the given
         TEXT and LANG as the syntax highlighter and PROMPT as prompt-type."
   (let* ((url llm-copilot--server-address)
-         (cb (list (cons 'data text)
-                   (cons 'prompt-type prompt)))
-         (payload (json-encode cb))
+         (payload (json-encode `(("data" . ,text)
+                                 ("prompt_type" . ,prompt))))
          (buffer-name "*llm-copilot*"))
     (with-current-buffer (get-buffer-create buffer-name)
       (goto-char (point-max))
@@ -86,27 +90,28 @@
       (org-mode)
       (insert "* Copilot\n")
       (insert "  - Prompt: " text "\n")
-      (llm-copilot--start-spinner) ;
+      (llm-copilot--start-spinner buffer-name)
       (switch-to-buffer buffer-name)
       (llm-copilot--send-post-request url payload
                                       (lambda (response)
-                                        (llm-copilot--stop-spinner)
-                                        (if response
-                                            (progn
-                                              (with-current-buffer buffer-name
-                                                (goto-char (point-max))
-                                                (insert "    #+BEGIN_SRC\s" lang "\n" response "\n    #+END_SRC\n\n")))
-                                          (with-current-buffer buffer-name
-                                            (goto-char (point-max))
-                                            (insert "  - Failed to fetch response\n\n"))))))))
+                                        (with-current-buffer buffer-name
+                                          (goto-char (point-max))
+                                          (if response
+                                              (insert "    #+BEGIN_SRC\s" lang "\n" response "\n    #+END_SRC\n\n")
+                                            (insert "  - Failed to fetch response\n\n")))
+                                        (llm-copilot--stop-spinner buffer-name))))))
+
+
+
+
 
 (defun llm-copilot--generate (text)
   "Interactively ask for input and insert code in an Org Mode buffer."
   (interactive "sEnter Prompt: ")
   (let* ((selected-lang (ivy-read "Select Language: " llm-copilot--languages))
          (selected-prompt-type (ivy-read "Select Prompt Type: " llm-copilot--prompt-type)))
+    (message selected-prompt-type)
     (llm-copilot--insert-into-org-mode text selected-lang selected-prompt-type)))
-
 
 
 (defun llm-copilot-start-server (model &optional address)
