@@ -16,12 +16,15 @@ Make sure that you have already downloaded a ggml based model that has the follo
 - Gpt2
 - GptJ
 
-
-To run the server after installation
+To run the server after installation if the model has already been downloaded:
 ``` shell
 llm-copilot <llama/bloom/gpt2/gptj> -m <model-path> --address <local server address>
 ```
 
+Or download one from HuggingFace using the username and repository:
+``` shell
+llm-copilot <llama/bloom/gpt2/gptj> -m <username/repo> --address <local server address>
+```
 
 ### Emacs:
 call function `llm-copilot-start-server` to start the server supplying the model path and address if needed
