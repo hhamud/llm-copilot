@@ -4,7 +4,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Parser)]
 pub struct BaseArgs {
     #[arg(long, short = 'm')]
-    pub model: PathBuf,
+    pub model: String,
 
     #[arg(long, short = 'a', default_value = "0.0.0.0:3000")]
     pub address: String,

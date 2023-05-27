@@ -1,10 +1,14 @@
-use git2::Repository;
 use llm::{
     load, load_progress_callback_stdout, InferenceFeedback, InferenceRequest, InferenceResponse,
 };
 use rand;
-use std::path::PathBuf;
+use std::fs::{create_dir, read_dir};
+use std::io::Error;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+use crate::repository::Repository;
+use crate::utils::download;
 
 #[derive(Clone)]
 pub struct Model {
@@ -12,26 +16,74 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new<T>(path: &PathBuf) -> Self
+    pub fn new<T>(input: &str) -> Result<Self, std::io::Error>
     where
         T: llm::KnownModel + 'static,
     {
-        // load a GGML model from disk
-        let llama = load::<T>(
-            // path to GGML file
-            path.as_path(),
-            // llm::ModelParameters
-            Default::default(),
-            // overrides
-            None,
-            // load progress callback
-            load_progress_callback_stdout,
-        )
-        .unwrap_or_else(|err| panic!("Failed to load model: {err}"));
+        let parts: Vec<&str> = input.split('/').collect();
 
-        Self {
-            data: Arc::new(llama),
+        if parts.len() == 2 {
+            let hf_repo = Repository::from_str(input)
+                .map_err(|err| Error::new(std::io::ErrorKind::InvalidData, err))?;
+
+            download(input).unwrap();
+
+            let path = PathBuf::from(".hfmodels").join(&hf_repo.repo);
+
+            if let Ok(entries) = read_dir(&path) {
+                for entry in entries {
+                    if let Ok(entry) = entry {
+                        // If the entry is a file and it has extension .bin
+                        if entry.path().is_file()
+                            && entry.path().extension().unwrap_or_default() == "bin"
+                        {
+                            let model = load::<T>(
+                                // path to GGML file
+                                path.as_path(),
+                                // llm::ModelParameters
+                                Default::default(),
+                                // overrides
+                                None,
+                                // load progress callback
+                                load_progress_callback_stdout,
+                            )
+                            .unwrap_or_else(|err| panic!("Failed to load model: {err}"));
+
+                            return Ok(Self {
+                                data: Arc::new(model),
+                            });
+                        }
+                    }
+                }
+            }
+
+            return Err(Error::new(
+                std::io::ErrorKind::NotFound,
+                "Model file not found",
+            ));
+        } else if Path::new(&input).is_absolute() {
+            // load a GGML model from disk
+            let model = load::<T>(
+                // path to GGML file
+                Path::new(&input),
+                // llm::ModelParameters
+                Default::default(),
+                // overrides
+                None,
+                // load progress callback
+                load_progress_callback_stdout,
+            )
+            .unwrap_or_else(|err| panic!("Failed to load model: {err}"));
+
+            return Ok(Self {
+                data: Arc::new(model),
+            });
         }
+
+        return Err(Error::new(
+            std::io::ErrorKind::NotFound,
+            "Model file not found",
+        ));
     }
 
     pub fn run_session(&self, prompt: &str) -> String {
@@ -71,83 +123,5 @@ impl Model {
         }
 
         data
-    }
-
-    pub fn download(&self, hf: &str) -> Result<(), git2::Error> {
-        let hf_repo = HuggingFaceRepo::from_str(hf)
-            .map_err(|_| git2::Error::from_str("Invalid Hugging Face repository format"))?;
-
-        let url = format!("https://huggingface.co/{}", hf_repo.to_string());
-        let local_path = Path::new(".models").join(&hf_repo.repo);
-
-        // Create directory if it doesn't exist
-        if !Path::new(".models").exists() {
-            fs::create_dir(".models")?;
-        }
-
-        let _repo = match Repository::clone(&url, &local_path) {
-            Ok(repo) => repo,
-            Err(e) => panic!("Failed to clone: {}", e),
-        };
-
-        Ok(())
-    }
-
-    pub fn load_from_repo<T>(&self, hf: &str) -> Result<(), Error>
-    where
-        T: llm::KnownModel + 'static,
-    {
-        let hf_repo = HuggingFaceRepo::from_str(hf)
-            .map_err(|err| Error::new(std::io::ErrorKind::InvalidData, err))?;
-
-        let path = PathBuf::from(".models").join(&hf_repo.repo);
-
-        if let Ok(entries) = fs::read_dir(path) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    // If the entry is a file and it has extension .bin
-                    if entry.path().is_file()
-                        && entry.path().extension().unwrap_or_default() == "bin"
-                    {
-                        let llama = self.new::<T>(&entry.path());
-                        // Now you can use the llama model
-                        //...
-                        return Ok(());
-                    }
-                }
-            }
-        }
-
-        Err(Error::new(
-            std::io::ErrorKind::NotFound,
-            "Model file not found",
-        ))
-    }
-}
-
-pub struct HuggingFaceRepo {
-    username: String,
-    repo: String,
-}
-
-impl HuggingFaceRepo {
-    pub fn new<S: Into<String>>(username: S, repo: S) -> Self {
-        Self {
-            username: username.into(),
-            repo: repo.into(),
-        }
-    }
-
-    pub fn from_str<S: AsRef<str>>(s: S) -> Result<Self, &'static str> {
-        let parts: Vec<&str> = s.as_ref().split('/').collect();
-        if parts.len() != 2 {
-            Err("Invalid format. Expected 'username/repo'.")
-        } else {
-            Ok(Self::new(parts[0], parts[1]))
-        }
-    }
-
-    pub fn to_string(&self) -> String {
-        format!("{}/{}", self.username, self.repo)
     }
 }

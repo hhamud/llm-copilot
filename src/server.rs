@@ -2,14 +2,15 @@ use axum::{extract::State, routing::post, Json, Router};
 use llm;
 use serde::{Deserialize, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio;
 
 use crate::model::Model;
 use crate::prompts::Prompt;
+use std::error::Error;
 
-pub async fn load_server<M: llm::KnownModel + 'static>(path: &PathBuf, addr: &String) {
-    let model = Model::new::<M>(path);
+pub async fn load_server<M: llm::KnownModel + 'static>(model_path: &str, addr: &String) {
+    let model = Model::new::<M>(model_path).unwrap();
     let server = Server::new(addr, model);
     server.start().await;
 }

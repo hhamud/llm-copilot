@@ -2,7 +2,9 @@ use clap::Parser;
 mod cli;
 mod model;
 mod prompts;
+mod repository;
 mod server;
+mod utils;
 
 use crate::cli::Args;
 use crate::server::load_server;
