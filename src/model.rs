@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::repository::Repository;
-use crate::utils::download;
+use crate::utils;
 
 #[derive(Clone)]
 pub struct Model {
@@ -26,7 +26,7 @@ impl Model {
             let hf_repo = Repository::from_str(input)
                 .map_err(|err| Error::new(std::io::ErrorKind::InvalidData, err))?;
 
-            download(input).unwrap();
+            utils::download(input).unwrap();
 
             let path = PathBuf::from(".hfmodels").join(&hf_repo.repo);
 
