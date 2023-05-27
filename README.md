@@ -33,3 +33,10 @@ Send post requests to the server as so if not using emacs
 ``` shell
 curl -X POST -H "Content-Type: application/json" -d '{ "prompt_type": "GENERATE", "data": "write a python function that prints hello world"}' http://localhost:3000
 ```
+
+
+## Disclaimer
+
+Please note that this project is currently in a Beta stage. While we have worked to ensure its functionality, it may contain bugs, errors, or other inconsistencies. We appreciate your understanding and invite you to report any issues you encounter. Your feedback is invaluable in improving this project.
+
+By using this project, you acknowledge that you understand the project is in a Beta phase and may not function as expected. Use this at your own discretion. The maintainers of this project are not responsible for any problems that may occur from using this project.

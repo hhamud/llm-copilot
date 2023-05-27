@@ -24,7 +24,7 @@
 (require 'spinner)
 
 
-(defvar llm-copilot--server-address "http://localhost:3000"
+(defvar llm-copilot--server-address "http://localhost:5000"
   "Default address.")
 
 (defvar llm-copilot--languages
@@ -102,9 +102,6 @@
                                         (llm-copilot--stop-spinner buffer-name))))))
 
 
-
-
-
 (defun llm-copilot--generate (text)
   "Interactively ask for input and insert code in an Org Mode buffer."
   (interactive "sEnter Prompt: ")
@@ -113,18 +110,23 @@
     (message selected-prompt-type)
     (llm-copilot--insert-into-org-mode text selected-lang selected-prompt-type)))
 
+(defun llm-copilot--process-sentinel (proc _event)
+  "Process sentinel for llm-copilot start server process.
+PROC is the process for the command, and EVENT describes the changes to it."
+  (when (eq (process-status proc) 'exit)
+    (if (= (process-exit-status proc) 0)
+        (message "llm-copilot server started successfully.")
+      (message "llm-copilot server failed to start."))))
 
-(defun llm-copilot-start-server (model &optional address)
-  "Start the server supplying the MODEL path and server ADDRESS."
-  (interactive "fSelect model: \nsSelect address (press Enter to use default localhost:3000): ")
-  (let ((address-arg (if (not (string-empty-p address))
-                         (progn
-                         (setq llm-copilot--server-address (format "http://%s" address))
-                         (format "--address %s" (shell-quote-argument address)))
-                       "")))
-    (shell-command (format "llm-copilot llama --model %s %s"
-                           (shell-quote-argument model)
-                           address-arg))))
+(defun llm-copilot-start-server ()
+  "Start the server supplying the MODEL path."
+  (interactive)
+  (let* ((command (format "cargo run --release -- llama --model /Users/user/models/ggml-alpaca-13b-q4.bin --address localhost:5000")))
+    (message "Starting server with command: %s" command)
+    (let ((process (start-process-shell-command "llm-copilot-server" "*llm-copilot-server*" command)))
+      (set-process-query-on-exit-flag process nil)
+      (set-process-sentinel process (lambda (process event)
+                                      (message "Server process %s" (substring event 0 -1)))))))
 
 
 
