@@ -14,10 +14,39 @@
 ;; This file is not part of GNU Emacs.
 ;;
 ;;; Commentary:
+;; llm-copilot is free software: you can redistribute it and/or modify it
+;; under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
 ;;
-;;  Description
+;; llm-copilot is distributed in the hope that it will be useful, but
+;; WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+;; General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with Notmuch.  If not, see <http://www.gnu.org/licenses/>.
+;;
+;; This is an emacs-based interface to the llm-copilot system.
+;;
+;; You will first need to have the llm-copilot program installed.
+;; See README.md for further details.
+;;
+;; To install this software, copy it to a directory that is on the
+;; `load-path' variable within Emacs (a good candidate is
+;; /usr/local/share/emacs/site-lisp).
+;; Then, to actually run it, add:
+;;
+;;	(require 'llm-copilot)
+;;
+;; to your ~/.emacs file, and then run "M-x llm-copilot-start-server"
+;; from within Emacs,
+;;
+;; Have fun, and let us know if you have any comment, questions, or
 ;;
 ;;; Code:
+;
+
 (require 'url)
 (require 'json)
 (require 'org)
