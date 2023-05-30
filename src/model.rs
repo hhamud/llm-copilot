@@ -28,7 +28,10 @@ impl Model {
 
             utils::download(input).unwrap();
 
-            let path = PathBuf::from(".hfmodels").join(&hf_repo.repo);
+
+            let home_path = dirs::home_dir().expect("Failed to get home directory");
+
+            let path = home_path.join(".models").join(&hf_repo.repo);
 
             if let Ok(entries) = read_dir(&path) {
                 for entry in entries {

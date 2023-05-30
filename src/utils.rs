@@ -3,6 +3,7 @@ use git2;
 use std::fs::{create_dir_all, read_dir};
 use std::path::Path;
 use std::process::Command;
+use dirs;
 
 pub fn download(hf: &str) -> Result<(), git2::Error> {
     let hf_repo = Repository::from_str(hf)
@@ -10,7 +11,9 @@ pub fn download(hf: &str) -> Result<(), git2::Error> {
 
     let url = format!("https://huggingface.co/{}", hf_repo.to_string());
 
-    let local_path = Path::new(".hfmodels").join(&hf_repo.repo);
+    let path = dirs::home_dir().expect("Failed to get home directory");
+
+    let local_path = path.join(".models").join(&hf_repo.repo);
 
     // Create directory if it doesn't exist
     if !local_path.exists() {

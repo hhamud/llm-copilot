@@ -1,6 +1,8 @@
 # Llm-Copilot
 A local ai pair programmer using local models
 
+## Requirements:
+- git lfs
 
 ## Installation
 To install paste the following command into your terminal
