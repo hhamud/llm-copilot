@@ -2,6 +2,7 @@ use crate::repository::Repository;
 use git2;
 use std::fs::{create_dir_all, read_dir};
 use std::path::Path;
+use std::process::Command;
 
 pub fn download(hf: &str) -> Result<(), git2::Error> {
     let hf_repo = Repository::from_str(hf)
@@ -22,6 +23,30 @@ pub fn download(hf: &str) -> Result<(), git2::Error> {
             Ok(repo) => repo,
             Err(e) => panic!("Failed to clone: {}", e),
         };
+    }
+
+    match git_lfs_pull(&local_path) {
+        Ok(()) => println!("Completed successfully."),
+        Err(e) => eprintln!("Failed with error: {}", e),
+    }
+
+    Ok(())
+}
+
+fn git_lfs_pull(path: &Path) -> std::io::Result<()> {
+    // user must have git lfs for this hack to work
+    let mut output = Command::new("git")
+        .current_dir(path)
+        .arg("lfs")
+        .arg("pull")
+        .spawn()?;
+
+    let encode = output.wait()?;
+
+    if encode.success() {
+        print!("Success");
+    } else {
+        print!("Error");
     }
 
     Ok(())
