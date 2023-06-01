@@ -53,7 +53,7 @@
 (require 'spinner)
 
 
-(defvar llm-copilot--server-address "http://localhost:5000"
+(defvar llm-copilot--server-address "http://localhost:3000"
   "Default address.")
 
 (defvar llm-copilot--languages
@@ -147,10 +147,10 @@ PROC is the process for the command, and EVENT describes the changes to it."
         (message "llm-copilot server started successfully.")
       (message "llm-copilot server failed to start."))))
 
-(defun llm-copilot-start-server ()
-  "Start the server supplying the MODEL path."
-  (interactive)
-  (let* ((command (format "cargo run --release -- llama --model /Users/user/models/ggml-alpaca-13b-q4.bin --address localhost:5000")))
+(defun llm-copilot-start-server (model &optional address)
+  "Start the server supplying the MODEL path and ADDRESS for the server."
+  (interactive "fChoose Model: \nsEnter Address: ")
+  (let* ((command (format "cargo run --release -- llama --model %s --address %s" model address)))
     (message "Starting server with command: %s" command)
     (let ((process (start-process-shell-command "llm-copilot-server" "*llm-copilot-server*" command)))
       (set-process-query-on-exit-flag process nil)
@@ -158,6 +158,25 @@ PROC is the process for the command, and EVENT describes the changes to it."
                                       (message "Server process %s" (substring event 0 -1)))))))
 
 
+(defun llm-copilot-start-server (model &optional address)
+  "Start the server supplying the MODEL path and ADDRESS for the server."
+  (interactive "fChoose Model: \nsEnter Address: ")
+  (if (not (string= address ""))
+      (setq llm-copilot--server-address address))
+  (let* ((command (format "cargo run --release -- llama --model %s --address %s" model llm-copilot--server-address)))
+    (message "Starting server with command: %s" command)
+    (let ((process (start-process-shell-command "llm-copilot-server" "*llm-copilot-server*" command)))
+      (set-process-query-on-exit-flag process nil)
+      (set-process-sentinel process (lambda (process event)
+                                      (message "Server process %s" (substring event 0 -1)))))))
+
+(defun llm-copilot-stop-server ()
+  "Shutdown the server."
+  (interactive)
+  (let ((process (get-buffer-process "*llm-copilot-server*")))
+    (when process
+      (interrupt-process process)
+      (message "Sent SIGINT to server process"))))
 
 
 (provide 'llm-copilot)

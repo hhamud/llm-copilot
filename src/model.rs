@@ -2,9 +2,9 @@ use llm::{
     load, load_progress_callback_stdout, InferenceFeedback, InferenceRequest, InferenceResponse,
 };
 use rand;
-use std::fs::{create_dir, read_dir};
+use std::fs::read_dir;
 use std::io::Error;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 
 use crate::repository::Repository;
@@ -27,7 +27,6 @@ impl Model {
                 .map_err(|err| Error::new(std::io::ErrorKind::InvalidData, err))?;
 
             utils::download(input).unwrap();
-
 
             let home_path = dirs::home_dir().expect("Failed to get home directory");
 

@@ -1,9 +1,9 @@
 use crate::repository::Repository;
+use dirs;
 use git2;
-use std::fs::{create_dir_all, read_dir};
+use std::fs::create_dir_all;
 use std::path::Path;
 use std::process::Command;
-use dirs;
 
 pub fn download(hf: &str) -> Result<(), git2::Error> {
     let hf_repo = Repository::from_str(hf)
