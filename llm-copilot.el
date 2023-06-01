@@ -131,13 +131,6 @@
                                         (llm-copilot--stop-spinner buffer-name))))))
 
 
-(defun llm-copilot--generate (text)
-  "Interactively ask for input and insert code in an Org Mode buffer."
-  (interactive "sEnter Prompt: ")
-  (let* ((selected-lang (ivy-read "Select Language: " llm-copilot--languages))
-         (selected-prompt-type (ivy-read "Select Prompt Type: " llm-copilot--prompt-type)))
-    (message selected-prompt-type)
-    (llm-copilot--insert-into-org-mode text selected-lang selected-prompt-type)))
 
 (defun llm-copilot--process-sentinel (proc _event)
   "Process sentinel for llm-copilot start server process.
@@ -146,16 +139,6 @@ PROC is the process for the command, and EVENT describes the changes to it."
     (if (= (process-exit-status proc) 0)
         (message "llm-copilot server started successfully.")
       (message "llm-copilot server failed to start."))))
-
-(defun llm-copilot-start-server (model &optional address)
-  "Start the server supplying the MODEL path and ADDRESS for the server."
-  (interactive "fChoose Model: \nsEnter Address: ")
-  (let* ((command (format "cargo run --release -- llama --model %s --address %s" model address)))
-    (message "Starting server with command: %s" command)
-    (let ((process (start-process-shell-command "llm-copilot-server" "*llm-copilot-server*" command)))
-      (set-process-query-on-exit-flag process nil)
-      (set-process-sentinel process (lambda (process event)
-                                      (message "Server process %s" (substring event 0 -1)))))))
 
 
 (defun llm-copilot-start-server (model &optional address)
@@ -178,6 +161,14 @@ PROC is the process for the command, and EVENT describes the changes to it."
       (interrupt-process process)
       (message "Sent SIGINT to server process"))))
 
+
+(defun llm-copilot-generate (text)
+  "Interactively ask for input and insert code in an Org Mode buffer."
+  (interactive "sEnter Prompt: ")
+  (let* ((selected-lang (ivy-read "Select Language: " llm-copilot--languages))
+         (selected-prompt-type (ivy-read "Select Prompt Type: " llm-copilot--prompt-type)))
+    (message selected-prompt-type)
+    (llm-copilot--insert-into-org-mode text selected-lang selected-prompt-type)))
 
 (provide 'llm-copilot)
 ;;; llm-copilot.el ends here

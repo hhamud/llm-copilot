@@ -2,6 +2,7 @@ use crate::model::Model;
 use crate::prompts::Prompt;
 use axum::{extract::State, routing::post, Json, Router};
 use llm;
+use log;
 use serde::{Deserialize, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use tokio;
@@ -70,7 +71,7 @@ async fn shutdown_signal() {
         _ = terminate => {},
     }
 
-    println!("signal received, starting graceful shutdown");
+    log::info!("==== signal received, starting graceful shutdown ====")
 }
 
 pub struct Server {
@@ -95,10 +96,10 @@ impl Server {
             .serve(app.into_make_service())
             .with_graceful_shutdown(shutdown_signal());
 
-        println!("Server running on http://{}", &self.addr);
+        log::info!("Server running on http://{}", &self.addr);
 
         if let Err(err) = server.await {
-            eprintln!("Server error: {}", err);
+            log::error!("Server error: {}", err)
         }
     }
 }

@@ -1,4 +1,6 @@
 use clap::Parser;
+use env_logger;
+use log;
 mod cli;
 mod model;
 mod prompts;
@@ -11,6 +13,11 @@ use crate::server::load_server;
 
 #[tokio::main]
 async fn main() {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .parse_default_env()
+        .init();
+
     let cli = Args::parse();
 
     match &cli {

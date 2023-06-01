@@ -1,6 +1,7 @@
 use crate::repository::Repository;
 use dirs;
 use git2;
+use log;
 use std::fs::create_dir_all;
 use std::path::Path;
 use std::process::Command;
@@ -29,8 +30,8 @@ pub fn download(hf: &str) -> Result<(), git2::Error> {
     }
 
     match git_lfs_pull(&local_path) {
-        Ok(()) => println!("Completed successfully."),
-        Err(e) => eprintln!("Failed with error: {}", e),
+        Ok(()) => log::info!("Completed successfully."),
+        Err(e) => log::error!("Failed with error: {}", e),
     }
 
     Ok(())
@@ -47,9 +48,9 @@ fn git_lfs_pull(path: &Path) -> std::io::Result<()> {
     let encode = output.wait()?;
 
     if encode.success() {
-        print!("Success");
+        log::info!("Success")
     } else {
-        print!("Error");
+        log::error!("Error")
     }
 
     Ok(())
