@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 axum = { version = "0.6.18", features = ["macros"] }
-llm = { git = "https://github.com/rustformers/llm.git", rev = "1849aacb814d43a86e03a20502e47f0ff83eda68" }
+llm = { git = "https://github.com/rustformers/llm.git", branch = "main"}
 clap = { version = "4.2.7", features = ["derive"] }
 hyper = { version = "0.14.26", features = ["full"] }
 rand = "0.8.5"

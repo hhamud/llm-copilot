@@ -42,10 +42,10 @@ impl Model {
                             let model = load::<T>(
                                 // path to GGML file
                                 path.as_path(),
+                                //tokeniser
+                                llm::TokenizerSource::Embedded,
                                 // llm::ModelParameters
                                 Default::default(),
-                                // overrides
-                                None,
                                 // load progress callback
                                 load_progress_callback_stdout,
                             )
@@ -68,10 +68,10 @@ impl Model {
             let model = load::<T>(
                 // path to GGML file
                 Path::new(&input),
+                //tokeniser
+                llm::TokenizerSource::Embedded,
                 // llm::ModelParameters
                 Default::default(),
-                // overrides
-                None,
                 // load progress callback
                 load_progress_callback_stdout,
             )
@@ -101,8 +101,10 @@ impl Model {
             // the prompt to use for text generation, as well as other
             // inference parameters
             &InferenceRequest {
-                prompt,
-                ..Default::default()
+                prompt: llm::Prompt::Text(prompt),
+                parameters: &llm::InferenceParameters::default(),
+                play_back_previous_tokens: false,
+                maximum_token_count: None,
             },
             // llm::OutputRequest
             &mut Default::default(),
